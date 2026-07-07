@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Scratch directories
+scratch/
+scratch*/
+.claude/
+
+# Compressed archives
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Reports & local run data
+healthcheck_data.json
+healthcheck_report.html
+docs/
