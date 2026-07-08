@@ -1,6 +1,6 @@
 # CipherTrust Healthcheck Reporter
 
-> Version 2.2.0
+> Version 3.0.0
 
 An automated diagnostics tool that logs into Thales CipherTrust Manager via `ksctl`, gathers configuration data, analyzes it, and generates a structured, interactive dashboard report.
 
@@ -8,7 +8,7 @@ An automated diagnostics tool that logs into Thales CipherTrust Manager via `ksc
 
 To run this script, your environment must meet the following requirements:
 
-- **Python 3.x**: The script uses only built-in Python modules (`json`, `subprocess`, `sys`, `datetime`, `os`, `re`, `getpass`), so no external packages are needed.
+- **Python 3.x**: In addition to standard library modules (`json`, `subprocess`, `sys`, `datetime`, `os`, `re`, `getpass`), the script depends on the `jinja2` package (used to render the HTML report from templates) — see `requirements.txt`.
 - **ksctl**: The CipherTrust Manager CLI utility (`ksctl`) must be installed and present in your system's `PATH`.
 - **Target CipherTrust Manager Server**: You must have network access and valid credentials (with adequate read permissions) for the CipherTrust Manager instance you wish to check.
 
@@ -20,7 +20,11 @@ To run this script, your environment must meet the following requirements:
    ```bash
    python --version
    ```
-3. **Verify `ksctl` CLI availability**:
+3. **Install Python dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. **Verify `ksctl` CLI availability**:
    Ensure `ksctl` is installed and runnable:
    ```bash
    ksctl version
