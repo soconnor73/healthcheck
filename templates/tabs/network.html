@@ -27,8 +27,8 @@
                     <td><code style="color: {{ 'var(--fail-color)' if i.get('mode') in ['no-tls-pw-opt', 'no-tls-pw-req', 'unauth-tls-pw-opt', 'unauth-tls-pw-req'] else 'inherit' }}">{{ i.get("mode") or "N/A" }}</code></td>
                     <td>{{ i.get("minimum_tls_version") or "N/A" }}</td>
                     <td>
-                        {% set has_x25519 = i.get("tls_groups", []) | selectattr("group_name", "equalto", "X25519MLKEM768") | selectattr("enabled") | list %}
-                        {% set has_secp = i.get("tls_groups", []) | selectattr("group_name", "equalto", "SecP256r1MLKEM768") | selectattr("enabled") | list %}
+                        {% set has_x25519 = (i.get("tls_groups") or []) | selectattr("group_name", "equalto", "X25519MLKEM768") | selectattr("enabled") | list %}
+                        {% set has_secp = (i.get("tls_groups") or []) | selectattr("group_name", "equalto", "SecP256r1MLKEM768") | selectattr("enabled") | list %}
                         {% if has_x25519 and has_secp %}Yes (Hybrid){% elif i.get("tls_groups") %}No (Weak){% else %}N/A{% endif %}
                     </td>
                     <td>{{ badge_pill("Enabled" if i.get("enabled") else "Disabled", "active" if i.get("enabled") else "locked") }}</td>
@@ -97,7 +97,7 @@
                 {% for dns in dnshosts %}
                 <tr>
                     <td><strong>{{ dns.get("name") }}</strong></td>
-                    <td>{{ dns.get("ips", []) | join(", ") }}</td>
+                    <td>{{ (dns.get("ips") or []) | join(", ") }}</td>
                     <td>{{ badge_pill(dns.get("type"), "active", "font-size:0.7rem;") }}</td>
                     <td>{{ format_readable_date(dns.get("createdAt")) }}</td>
                 </tr>

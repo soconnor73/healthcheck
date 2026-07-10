@@ -47,7 +47,7 @@
             <tbody>
                 {% set has_inactive_gp = namespace(found=false) %}
                 {% for cname, gp_data in data.get("cte_guardpoints", {}).items() %}
-                {% for gp in gp_data.get("resources", []) if (gp.get("guard_point_state", "") | upper) != "ACTIVE" %}
+                {% for gp in (gp_data.get("resources") or []) if (gp.get("guard_point_state", "") | upper) != "ACTIVE" %}
                 {% set has_inactive_gp.found = true %}
                 <tr>
                     <td><strong>{{ cname }}</strong></td>

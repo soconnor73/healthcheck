@@ -120,7 +120,7 @@ def run_ksctl_list_all(args: List[str]) -> Dict[str, Any]:
         if not isinstance(res, dict) or "resources" not in res:
             return res
             
-        resources = res.get("resources", [])
+        resources = res.get("resources") or []
         all_resources.extend(resources)
         
         total = res.get("total", 0)
@@ -141,7 +141,7 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
     now = datetime.now(timezone.utc)
     
     # 1. Filter Users
-    users_raw = data.get("users", {}).get("resources", [])
+    users_raw = data.get("users", {}).get("resources") or []
     interesting_users = []
     for u in users_raw:
         last_login = parse_date(u.get("last_login"))
@@ -161,7 +161,7 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
         data["users"]["total"] = len(interesting_users)
         
     # 2. Filter Keys (Collapse versions, keep only latest version of each unique key)
-    keys_raw = data.get("keys", {}).get("resources", [])
+    keys_raw = data.get("keys", {}).get("resources") or []
     grouped_keys = {}
     for k in keys_raw:
         name = k.get("name")
@@ -179,8 +179,8 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
         data["keys"]["total"] = len(interesting_keys)
         
     # 3. Filter Backups (Keep latest 10 backups plus any backup referencing an issue)
-    backups_raw = data.get("backups", {}).get("resources", [])
-    backup_keys_raw = data.get("backup_keys", {}).get("resources", [])
+    backups_raw = data.get("backups", {}).get("resources") or []
+    backup_keys_raw = data.get("backup_keys", {}).get("resources") or []
     known_backup_key_ids = {bk.get("id"): bk for bk in backup_keys_raw}
     
     interesting_backups = []
@@ -203,14 +203,14 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
         data["backups"]["total"] = len(interesting_backups)
         
     # 4. Filter Alarms (Keep only active, unacknowledged alarms)
-    alarms_raw = data.get("alarms", {}).get("resources", [])
+    alarms_raw = data.get("alarms", {}).get("resources") or []
     interesting_alarms = [a for a in alarms_raw if a.get("state") == "on" and a.get("acknowledgedAt") is None]
     if "alarms" in data and "resources" in data["alarms"]:
         data["alarms"]["resources"] = interesting_alarms
         data["alarms"]["total"] = len(interesting_alarms)
         
     # 5. Filter Properties (Keep only modified properties)
-    props_raw = data.get("properties", {}).get("resources", [])
+    props_raw = data.get("properties", {}).get("resources") or []
     interesting_props = []
     for prop in props_raw:
         name = prop.get("name")
@@ -224,7 +224,7 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
         data["properties"]["total"] = len(interesting_props)
         
     # 6. Filter Quorum Policies (Keep only active quorum policies)
-    qp_raw = data.get("quorum_policies", {}).get("resources", [])
+    qp_raw = data.get("quorum_policies", {}).get("resources") or []
     interesting_qps = [qp for qp in qp_raw if qp.get("active") is True]
     if "quorum_policies" in data and "resources" in data["quorum_policies"]:
         data["quorum_policies"]["resources"] = interesting_qps
@@ -232,13 +232,13 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
         
     # 7. Filter Services (Keep only non-started system services)
     if "services" in data:
-        svc_raw = data["services"].get("services", [])
+        svc_raw = data["services"].get("services") or []
         interesting_svcs = [s for s in svc_raw if s.get("status") != "started"]
         data["services"]["services"] = interesting_svcs
         
     # 8. Filter Groups (Keep only custom groups where app_metadata.system is false)
     if "groups" in data:
-        groups_raw = data["groups"].get("resources", [])
+        groups_raw = data["groups"].get("resources") or []
         custom_groups = []
         for g in groups_raw:
             meta = g.get("app_metadata")
@@ -250,21 +250,21 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
         
     # 9. Filter Trusted CAs (Drop huge PEM certs to save context space)
     if "trusted_ca_certs" in data:
-        ca_raw = data["trusted_ca_certs"].get("resources", [])
+        ca_raw = data["trusted_ca_certs"].get("resources") or []
         for ca in ca_raw:
             if "ca_details" in ca and "cert" in ca["ca_details"]:
                 ca["ca_details"]["cert"] = "[PEM Certificate Block Omitted for Brevity]"
                 
     # 10. Filter Local CAs (Drop huge PEM certs)
     if "local_cas" in data:
-        ca_raw = data["local_cas"].get("resources", [])
+        ca_raw = data["local_cas"].get("resources") or []
         for ca in ca_raw:
             if "cert" in ca:
                 ca["cert"] = "[PEM Certificate Block Omitted for Brevity]"
 
     # 11. Filter External CAs (Drop huge PEM certs)
     if "external_cas" in data:
-        ca_raw = data["external_cas"].get("resources", [])
+        ca_raw = data["external_cas"].get("resources") or []
         for ca in ca_raw:
             if "cert" in ca:
                 ca["cert"] = "[PEM Certificate Block Omitted for Brevity]"
@@ -272,7 +272,7 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
     # 12. Filter Connections (Redact secrets/certs, keep only LDAP connections since
     # OIDC/zone connections aren't relevant to the TLS validation checks in this report)
     if "connections" in data:
-        conn_raw = data["connections"].get("resources", [])
+        conn_raw = data["connections"].get("resources") or []
         ldap_conns = []
         for conn in conn_raw:
             strategy = (conn.get("strategy") or conn.get("connection_type") or "").lower()
@@ -290,7 +290,7 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 13. Filter Clients (Drop huge PEM cert/csr blocks; not needed for reporting)
     if "clients" in data:
-        clients_raw = data["clients"].get("resources", [])
+        clients_raw = data["clients"].get("resources") or []
         for c in clients_raw:
             if "cert" in c:
                 c["cert"] = "[PEM Certificate Block Omitted for Brevity]"
@@ -300,7 +300,7 @@ def filter_interesting_data(data: Dict[str, Any]) -> Dict[str, Any]:
     # 14. Filter Event Records (Keep only records with severity above INFO)
     for records_key in ("server_event_records", "client_event_records"):
         if records_key in data:
-            records_raw = data[records_key].get("resources", [])
+            records_raw = data[records_key].get("resources") or []
             interesting_records = [r for r in records_raw if (r.get("severity") or "").lower() in SIGNIFICANT_SEVERITIES]
             data[records_key]["resources"] = interesting_records
             data[records_key]["total"] = len(interesting_records)
@@ -345,9 +345,9 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     now = datetime.now(timezone.utc)
     
     # 1. Licensing Checks
-    licenses = data.get("licenses", {}).get("resources", [])
-    features = data.get("features", {}).get("resources", [])
-    trials = data.get("trials", {}).get("resources", [])
+    licenses = data.get("licenses", {}).get("resources") or []
+    features = data.get("features", {}).get("resources") or []
+    trials = data.get("trials", {}).get("resources") or []
     lockdata = data.get("lockdata", {})
 
     def has_real_expiration(exp_str: Optional[str]) -> bool:
@@ -476,15 +476,15 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     # 2. System Check (incorporating NTP, Backups, Cluster, Banners, Disk encryption, Alarms)
     sys_info = data.get("system_info", {})
     ntp_status = data.get("ntp_status", {})
-    backups = data.get("backups", {}).get("resources", [])
-    backup_keys = data.get("backup_keys", {}).get("resources", [])
-    scheduler_configs = data.get("scheduler_configs", {}).get("resources", [])
+    backups = data.get("backups", {}).get("resources") or []
+    backup_keys = data.get("backup_keys", {}).get("resources") or []
+    scheduler_configs = data.get("scheduler_configs", {}).get("resources") or []
     cluster_info = data.get("cluster_info", {})
-    cluster_nodes = data.get("cluster_nodes", {}).get("resources", [])
+    cluster_nodes = data.get("cluster_nodes", {}).get("resources") or []
     cluster_errors = data.get("cluster_errors")
     banner_data = data.get("banner", {})
     diskenc = data.get("disk_encryption", {})
-    alarms = data.get("alarms", {}).get("resources", [])
+    alarms = data.get("alarms", {}).get("resources") or []
     
     # NTP Check
     ntp_ok = False
@@ -506,7 +506,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
         results["system"]["status"] = "WARNING"
 
     # NTP Servers Configured Check
-    ntp_servers = data.get("ntp_servers", {}).get("resources", [])
+    ntp_servers = data.get("ntp_servers", {}).get("resources") or []
     results["system"]["metrics"]["ntp_servers_count"] = len(ntp_servers)
     if not ntp_servers:
         results["system"]["issues"].append({
@@ -660,8 +660,8 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["system"]["metrics"]["alarm_breakdown"] = sev_counts
 
     # 3. Access Check
-    users = data.get("users", {}).get("resources", [])
-    pwd_policies = data.get("password_policies", {}).get("resources", [])
+    users = data.get("users", {}).get("resources") or []
+    pwd_policies = data.get("password_policies", {}).get("resources") or []
     results["access"]["metrics"]["total_users"] = len(users)
     
     locked_users = 0
@@ -795,7 +795,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["access"]["metrics"]["weak_password_policies"] = sorted(set(weak_pwd_policies))
 
     # Audit admin group members
-    admin_users = data.get("admin_users", {}).get("resources", [])
+    admin_users = data.get("admin_users", {}).get("resources") or []
     for u in admin_users:
         username = u.get("username")
         name = u.get("name") or u.get("nickname") or username
@@ -816,7 +816,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
             })
 
     # Quorum Policies check
-    quorum_policies = data.get("quorum_policies", {}).get("resources", [])
+    quorum_policies = data.get("quorum_policies", {}).get("resources") or []
     active_qps = []
     for qp in quorum_policies:
         if qp.get("active") is True:
@@ -826,7 +826,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["access"]["active_quorum_policies"] = active_qps
 
     # Custom Security Groups check
-    groups = data.get("groups", {}).get("resources", [])
+    groups = data.get("groups", {}).get("resources") or []
     custom_groups = []
     for g in groups:
         meta = g.get("app_metadata")
@@ -840,7 +840,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     # LDAP External Authentication Connections Check
     # Note: insecure_skip_verify/root_ca only apply when server_url uses the ldaps:// scheme;
     # OIDC/zone connections don't expose these TLS options per the ksctl connections docs.
-    connections = data.get("connections", {}).get("resources", [])
+    connections = data.get("connections", {}).get("resources") or []
     ldap_connections_count = 0
     insecure_skip_verify_connections = 0
     no_root_ca_connections = 0
@@ -877,7 +877,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["access"]["metrics"]["ldap_connections_no_root_ca_count"] = no_root_ca_connections
 
     # 4. Domains Checks
-    domains = data.get("domains", {}).get("resources", [])
+    domains = data.get("domains", {}).get("resources") or []
     results["domains"]["metrics"]["total_domains"] = len(domains)
     for dom in domains:
         dname = dom.get("name")
@@ -897,8 +897,8 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
                 results["domains"]["status"] = "WARNING"
 
     # 5. Service Interfaces & Log Forwarders Checks (Network Category)
-    interfaces = data.get("interfaces", {}).get("resources", [])
-    log_forwarders = data.get("log_forwarders", {}).get("resources", [])
+    interfaces = data.get("interfaces", {}).get("resources") or []
+    log_forwarders = data.get("log_forwarders", {}).get("resources") or []
 
     # Interfaces Checks
     results["network"]["metrics"]["total_interfaces"] = len(interfaces)
@@ -907,7 +907,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
         enabled = inter.get("enabled", True)
         mode = inter.get("mode")
         min_tls = inter.get("minimum_tls_version")
-        tls_grps = inter.get("tls_groups", [])
+        tls_grps = inter.get("tls_groups") or []
         
         if not enabled:
             results["network"]["issues"].append({
@@ -970,7 +970,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
         results["network"]["status"] = "FAIL"
 
     # 6. Keys Checks
-    keys_raw = data.get("keys", {}).get("resources", [])
+    keys_raw = data.get("keys", {}).get("resources") or []
     results["keys"]["metrics"]["total_raw_keys"] = len(keys_raw)
     
     # Group keys by name
@@ -1061,7 +1061,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 6.4 Orphaned Resources Check (keys left behind in deleted domains)
     orphaned_report = data.get("orphaned_resources", {})
-    orphaned_entries = orphaned_report.get("resources", []) if isinstance(orphaned_report, dict) else []
+    orphaned_entries = orphaned_report.get("resources") or [] if isinstance(orphaned_report, dict) else []
     if not orphaned_entries and isinstance(orphaned_report, dict) and orphaned_report and "error" not in orphaned_report:
         # This report endpoint may return a single summary object instead of a resources list.
         orphaned_entries = [orphaned_report]
@@ -1083,7 +1083,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["keys"]["metrics"]["orphaned_keys_count"] = total_orphaned_keys
 
     # 6.5 System Properties Check
-    properties = data.get("properties", {}).get("resources", [])
+    properties = data.get("properties", {}).get("resources") or []
     modified_props = []
 
     for prop in properties:
@@ -1104,7 +1104,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["system"]["modified_properties"] = modified_props
 
     # 6.6 Root-of-Trust Keys Check
-    rot_keys = data.get("rot_keys", {}).get("resources", [])
+    rot_keys = data.get("rot_keys", {}).get("resources") or []
     old_rot_keys = []
     for rk in rot_keys:
         rk_id = rk.get("id")
@@ -1125,7 +1125,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["system"]["rot_keys"] = rot_keys
 
     # 6.7 Scheduler Configurations Check
-    scheduler_configs = data.get("scheduler_configs", {}).get("resources", [])
+    scheduler_configs = data.get("scheduler_configs", {}).get("resources") or []
     disabled_scheds = []
     for s in scheduler_configs:
         name = s.get("name")
@@ -1142,7 +1142,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 6.8 System Services Check
     services_data = data.get("services", {})
-    services_list = services_data.get("services", [])
+    services_list = services_data.get("services") or []
     non_started_services = []
     
     top_status = services_data.get("status")
@@ -1196,7 +1196,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
                 results["ca"]["status"] = "WARNING"
 
     # 6.9 Trusted CA Certificates Check
-    trusted_cas = data.get("trusted_ca_certs", {}).get("resources", [])
+    trusted_cas = data.get("trusted_ca_certs", {}).get("resources") or []
     results["ca"]["metrics"]["total_trusted_cas_count"] = len(trusted_cas)
 
     for ca in trusted_cas:
@@ -1205,16 +1205,16 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
         check_cert_expiry("Trusted CA certificate", ca_name, ca_details.get("notAfter"), "ca_trusted_expired", "ca_trusted_expiring")
 
     # 6.10 Local/External CAs Check
-    local_cas = data.get("local_cas", {}).get("resources", [])
-    external_cas = data.get("external_cas", {}).get("resources", [])
+    local_cas = data.get("local_cas", {}).get("resources") or []
+    external_cas = data.get("external_cas", {}).get("resources") or []
     for ca_list, ca_type in [(local_cas, "Local"), (external_cas, "External")]:
         for ca in ca_list:
             check_cert_expiry(f"{ca_type} CA", ca.get("name") or ca.get("id"), ca.get("notAfter"), "ca_local_external_expired", "ca_local_external_expiring")
 
     # 6.11 CTE and Capacity Check
     results["cte"] = {"status": "PASS", "issues": [], "metrics": {}}
-    cte_clients = data.get("cte_clients", {}).get("resources", [])
-    cte_policies = data.get("cte_policies", {}).get("resources", [])
+    cte_clients = data.get("cte_clients", {}).get("resources") or []
+    cte_policies = data.get("cte_policies", {}).get("resources") or []
     capacity_report = data.get("capacity_report", {}) or {}
     
     results["cte"]["metrics"]["total_clients"] = len(cte_clients)
@@ -1239,7 +1239,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
         # Check client GuardPoints
         c_gps = data.get("cte_guardpoints", {}).get(cname, {})
         if isinstance(c_gps, dict):
-            gps_list = c_gps.get("resources", [])
+            gps_list = c_gps.get("resources") or []
             for gp in gps_list:
                 gp_state = gp.get("guard_point_state", "UNKNOWN")
                 gp_path = gp.get("guard_path", "UNKNOWN")
@@ -1264,8 +1264,8 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
                 results["cte"]["status"] = "WARNING"
 
     # 6.12 Outbound Notification & Proxy Configuration Check
-    smtp_servers = data.get("smtp_servers", {}).get("resources", [])
-    notification_emails = data.get("notification_emails", {}).get("resources", [])
+    smtp_servers = data.get("smtp_servers", {}).get("resources") or []
+    notification_emails = data.get("notification_emails", {}).get("resources") or []
 
     results["system"]["metrics"]["smtp_servers_count"] = len(smtp_servers)
     results["system"]["metrics"]["notification_emails_count"] = len(notification_emails)
@@ -1289,7 +1289,7 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     # Proxy responses may come back as a list of configs or a single config object.
     proxy_data = data.get("proxy", {})
     if isinstance(proxy_data, dict):
-        proxy_entries = proxy_data.get("resources", [])
+        proxy_entries = proxy_data.get("resources") or []
         if not proxy_entries and proxy_data and "error" not in proxy_data:
             proxy_entries = [proxy_data]
     elif isinstance(proxy_data, list):
@@ -1314,15 +1314,15 @@ def analyze_health(data: Dict[str, Any]) -> Dict[str, Any]:
     results["licensing"]["metrics"]["total_features"] = len(features)
 
     # 7. Clients Checks
-    clients = data.get("clients", {}).get("resources", [])
+    clients = data.get("clients", {}).get("resources") or []
     active_clients = [c for c in clients if c.get("state") == "active"]
     results["clients"]["metrics"]["total_clients"] = len(clients)
     results["clients"]["metrics"]["active_clients"] = len(active_clients)
     results["clients"]["active_clients_list"] = active_clients
 
     # 8. Event Records Check (recent server/client audit records above INFO severity)
-    server_records = data.get("server_event_records", {}).get("resources", [])
-    client_records = data.get("client_event_records", {}).get("resources", [])
+    server_records = data.get("server_event_records", {}).get("resources") or []
+    client_records = data.get("client_event_records", {}).get("resources") or []
 
     significant_server_events = 0
     for rec in server_records:
@@ -1568,27 +1568,27 @@ def generate_html_report(data: Dict[str, Any], analysis: Dict[str, Any]) -> None
     
     sys_info = data.get("system_info", {})
     ntp_status = data.get("ntp_status", {})
-    backups = data.get("backups", {}).get("resources", [])
-    backup_keys = data.get("backup_keys", {}).get("resources", [])
-    scheduler_configs = data.get("scheduler_configs", {}).get("resources", [])
-    users = data.get("users", {}).get("resources", [])
-    keys = data.get("keys", {}).get("resources", [])
-    clients = data.get("clients", {}).get("resources", [])
+    backups = data.get("backups", {}).get("resources") or []
+    backup_keys = data.get("backup_keys", {}).get("resources") or []
+    scheduler_configs = data.get("scheduler_configs", {}).get("resources") or []
+    users = data.get("users", {}).get("resources") or []
+    keys = data.get("keys", {}).get("resources") or []
+    clients = data.get("clients", {}).get("resources") or []
     active_clients = analysis.get("clients", {}).get("active_clients_list", [])
-    server_records = data.get("server_event_records", {}).get("resources", [])
-    client_records = data.get("client_event_records", {}).get("resources", [])
+    server_records = data.get("server_event_records", {}).get("resources") or []
+    client_records = data.get("client_event_records", {}).get("resources") or []
     cluster_info = data.get("cluster_info", {})
-    cluster_nodes = data.get("cluster_nodes", {}).get("resources", [])
-    domains = data.get("domains", {}).get("resources", [])
-    dnshosts = data.get("dnshosts", {}).get("resources", [])
-    interfaces = data.get("interfaces", {}).get("resources", [])
-    log_forwarders = data.get("log_forwarders", {}).get("resources", [])
-    licenses = data.get("licenses", {}).get("resources", [])
-    features = data.get("features", {}).get("resources", [])
+    cluster_nodes = data.get("cluster_nodes", {}).get("resources") or []
+    domains = data.get("domains", {}).get("resources") or []
+    dnshosts = data.get("dnshosts", {}).get("resources") or []
+    interfaces = data.get("interfaces", {}).get("resources") or []
+    log_forwarders = data.get("log_forwarders", {}).get("resources") or []
+    licenses = data.get("licenses", {}).get("resources") or []
+    features = data.get("features", {}).get("resources") or []
     diskenc = data.get("disk_encryption", {})
     metrics_status = data.get("metrics_prometheus", {})
-    pwd_policies = data.get("password_policies", {}).get("resources", [])
-    properties = data.get("properties", {}).get("resources", [])
+    pwd_policies = data.get("password_policies", {}).get("resources") or []
+    properties = data.get("properties", {}).get("resources") or []
     modified_properties = analysis.get("system", {}).get("modified_properties", [])
     proxy_info = data.get("proxy", {}) or {}
     http_proxy = proxy_info.get("HTTP_PROXY") or proxy_info.get("http_proxy") or "Not Configured"
@@ -1618,18 +1618,18 @@ def generate_html_report(data: Dict[str, Any], analysis: Dict[str, Any]) -> None
     is_clustered = analysis["system"]["metrics"]["is_clustered"]
     prom_enabled = analysis["system"]["metrics"]["prometheus_enabled"]
     active_quorum_policies = analysis.get("access", {}).get("active_quorum_policies", [])
-    rot_keys = data.get("rot_keys", {}).get("resources", [])
+    rot_keys = data.get("rot_keys", {}).get("resources") or []
     services_status = analysis.get("system", {}).get("services_status", {}) or {}
     non_started_services = analysis.get("system", {}).get("non_started_services", [])
-    notification_emails = data.get("notification_emails", {}).get("resources", [])
-    smtp_servers = data.get("smtp_servers", {}).get("resources", [])
+    notification_emails = data.get("notification_emails", {}).get("resources") or []
+    smtp_servers = data.get("smtp_servers", {}).get("resources") or []
     custom_groups = analysis.get("access", {}).get("custom_groups", [])
-    admin_users = data.get("admin_users", {}).get("resources", [])
-    trusted_ca_certs = data.get("trusted_ca_certs", {}).get("resources", [])
-    local_cas = data.get("local_cas", {}).get("resources", [])
-    external_cas = data.get("external_cas", {}).get("resources", [])
-    cte_clients = data.get("cte_clients", {}).get("resources", [])
-    cte_policies = data.get("cte_policies", {}).get("resources", [])
+    admin_users = data.get("admin_users", {}).get("resources") or []
+    trusted_ca_certs = data.get("trusted_ca_certs", {}).get("resources") or []
+    local_cas = data.get("local_cas", {}).get("resources") or []
+    external_cas = data.get("external_cas", {}).get("resources") or []
+    cte_clients = data.get("cte_clients", {}).get("resources") or []
+    cte_policies = data.get("cte_policies", {}).get("resources") or []
     sorted_cte_policies = sorted(cte_policies, key=lambda x: (x.get("policy_type") or "", x.get("name") or ""))
     capacity_report = data.get("capacity_report", {}) or {}
     cte_metrics = analysis.get("cte", {}).get("metrics", {})
@@ -1638,9 +1638,9 @@ def generate_html_report(data: Dict[str, Any], analysis: Dict[str, Any]) -> None
         i_name = i.get("name")
         t_cas = i.get("trusted_cas", {})
         if isinstance(t_cas, dict):
-            for lca_uri in t_cas.get("local", []):
+            for lca_uri in t_cas.get("local") or []:
                 ca_to_interfaces.setdefault(lca_uri, []).append(i_name)
-            for eca_uri in t_cas.get("external", []):
+            for eca_uri in t_cas.get("external") or []:
                 ca_to_interfaces.setdefault(eca_uri, []).append(i_name)
 
     # Generate user rows split into Locked, Unused, and High Risk Accounts
@@ -1946,7 +1946,7 @@ def main() -> None:
     # CTE GuardPoints depend on the CTE client list resolved above, but the lookup for
     # each client is itself independent, so these are parallelized as a second phase.
     data["cte_guardpoints"] = {}
-    cte_clients_list = data["cte_clients"].get("resources", []) if isinstance(data.get("cte_clients"), dict) else []
+    cte_clients_list = data["cte_clients"].get("resources") or [] if isinstance(data.get("cte_clients"), dict) else []
     client_names = [c.get("name") for c in cte_clients_list if c.get("name")]
     if client_names:
         with ThreadPoolExecutor(max_workers=8) as executor:

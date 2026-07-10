@@ -136,7 +136,7 @@
                     {% for qp in active_quorum_policies %}
                     <tr>
                         <td><strong>{{ qp.get("profile") }}</strong></td>
-                        <td>{{ qp.get("operation", []) | join(" • ") }}</td>
+                        <td>{{ (qp.get("operation") or []) | join(" • ") }}</td>
                         <td>{{ badge_pill("Active", "active") }}</td>
                     </tr>
                     {% endfor %}
