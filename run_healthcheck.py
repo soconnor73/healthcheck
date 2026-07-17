@@ -1565,6 +1565,137 @@ def generate_html_report(data: Dict[str, Any], analysis: Dict[str, Any]) -> None
         findings_html = '<div class="issue-item" style="background: rgba(16, 185, 129, 0.1); color: #d1fae5; border: 1px solid rgba(16, 185, 129, 0.2);"><i class="fa-solid fa-circle-check"></i> No critical issues, warnings or informational findings found across any check categories!</div>'
     else:
         findings_html = "\n".join(findings_html_parts)
+
+    # checklist of all checks performed
+    ALL_CHECKS = [
+        # Licensing
+        {"category": "Licensing", "text": "Flag any license in 'expired' state", "type": "flag", "codes": ["license_expired"]},
+        {"category": "Licensing", "text": "Flag any license past its expiration date", "type": "flag", "codes": ["license_expired"]},
+        {"category": "Licensing", "text": "Flag any license expiring within 30 days", "type": "flag", "codes": ["license_expiring"]},
+        {"category": "Licensing", "text": "Flag any trial license with 30 or fewer days remaining", "type": "flag", "codes": ["license_trial_expiring"]},
+        {"category": "Licensing", "text": "Flag any licensed feature in 'expired' status", "type": "flag", "codes": ["feature_expired"]},
+        {"category": "Licensing", "text": "Flag any licensed feature with 30 or fewer days remaining", "type": "flag", "codes": ["feature_expiring"]},
+        {"category": "Licensing", "text": "Report license expiration values that cannot be parsed", "type": "flag", "codes": ["license_expiration_unparseable"]},
+        {"category": "Licensing", "text": "Report whether active trial mode is enabled", "type": "info", "codes": ["lic_trial_mode_active"]},
+
+        # System & Cluster
+        {"category": "System & Cluster", "text": "Verify NTP is synchronized", "type": "verify", "codes": ["sys_ntp_not_synced"]},
+        {"category": "System & Cluster", "text": "Flag disk encryption attendedBoot enabled (manual passphrase at boot)", "type": "flag", "codes": ["sys_disk_encryption_attended_boot"]},
+        {"category": "System & Cluster", "text": "Verify a pre-authentication login banner is configured", "type": "verify", "codes": ["sys_no_login_banner"]},
+        {"category": "System & Cluster", "text": "Verify a scheduled database backup job exists and is enabled", "type": "verify", "codes": ["sys_no_scheduled_backup"]},
+        {"category": "System & Cluster", "text": "Verify at least one backup exists", "type": "verify", "codes": ["sys_no_backups"]},
+        {"category": "System & Cluster", "text": "Flag latest backup older than 7 days", "type": "flag", "codes": ["sys_backup_too_old"]},
+        {"category": "System & Cluster", "text": "Flag backups referencing a backup key ID that no longer exists", "type": "flag", "codes": ["sys_backup_missing_key"]},
+        {"category": "System & Cluster", "text": "Flag backups referencing a backup key that is not active", "type": "flag", "codes": ["sys_backup_key_referenced_inactive"]},
+        {"category": "System & Cluster", "text": "Flag any backup key not in active state", "type": "flag", "codes": ["sys_backup_key_inactive"]},
+        {"category": "System & Cluster", "text": "Flag cluster errors when node is clustered", "type": "flag", "codes": ["sys_cluster_errors"]},
+        {"category": "System & Cluster", "text": "Flag active, unacknowledged alarms", "type": "flag", "codes": ["sys_active_alarms_critical", "sys_active_alarms"]},
+        {"category": "System & Cluster", "text": "Flag system properties that differ from documented default value", "type": "flag", "codes": ["sys_property_modified"]},
+        {"category": "System & Cluster", "text": "Flag Root-of-Trust keys older than 365 days", "type": "flag", "codes": ["sys_rot_key_old"]},
+        {"category": "System & Cluster", "text": "Report disabled scheduler configurations", "type": "info", "codes": ["sys_scheduler_disabled"]},
+        {"category": "System & Cluster", "text": "Verify overall system services status is 'started'", "type": "verify", "codes": ["sys_services_status_not_started"]},
+        {"category": "System & Cluster", "text": "Flag any individual system service not in started state", "type": "flag", "codes": ["sys_service_not_started"]},
+        {"category": "System & Cluster", "text": "Verify at least one NTP server is configured", "type": "verify", "codes": ["sys_no_ntp_servers"]},
+        {"category": "System & Cluster", "text": "Verify an SMTP server is configured for email alerting", "type": "verify", "codes": ["sys_no_smtp_server"]},
+        {"category": "System & Cluster", "text": "Verify notification email recipients are set when SMTP is configured", "type": "verify", "codes": ["sys_no_notification_recipients"]},
+        {"category": "System & Cluster", "text": "Verify the Prometheus metrics API is enabled", "type": "verify", "codes": ["sys_prometheus_disabled"]},
+
+        # Access Control
+        {"category": "Access Control", "text": "Flag locked-out user accounts", "type": "flag", "codes": ["access_user_locked_out"]},
+        {"category": "Access Control", "text": "Flag user accounts that have never logged in", "type": "flag", "codes": ["access_user_never_logged_in"]},
+        {"category": "Access Control", "text": "Flag user accounts inactive for more than 30 days", "type": "flag", "codes": ["access_user_inactive"]},
+        {"category": "Access Control", "text": "Flag user accounts with login flags set", "type": "flag", "codes": ["access_user_login_flags_set"]},
+        {"category": "Access Control", "text": "Flag user accounts with failed login attempts", "type": "flag", "codes": ["access_user_failed_logins"]},
+        {"category": "Access Control", "text": "Flag password policies with a minimum length under 8 characters", "type": "flag", "codes": ["access_pwd_policy_weak_min_length"]},
+        {"category": "Access Control", "text": "Flag password policies with password reuse prevention disabled", "type": "flag", "codes": ["access_pwd_policy_no_history"]},
+        {"category": "Access Control", "text": "Flag password policies with account lockout disabled", "type": "flag", "codes": ["access_pwd_policy_no_lockout"]},
+        {"category": "Access Control", "text": "Report password policies with no password expiration enforced", "type": "info", "codes": ["access_pwd_policy_no_expiration"]},
+        {"category": "Access Control", "text": "Flag admin group members who have never logged in", "type": "flag", "codes": ["access_admin_never_logged_in"]},
+        {"category": "Access Control", "text": "Report admin group members who have logged in", "type": "info", "codes": ["access_admin_member_info"]},
+        {"category": "Access Control", "text": "Flag ldaps:// LDAP connections with certificate verification disabled", "type": "flag", "codes": ["access_ldap_insecure_skip_verify"]},
+        {"category": "Access Control", "text": "Flag ldaps:// LDAP connections with no root CA configured", "type": "flag", "codes": ["access_ldap_no_root_ca"]},
+
+        # Domains
+        {"category": "Domains", "text": "Report domains with allow_user_management enabled", "type": "info", "codes": ["domains_allow_user_management"]},
+        {"category": "Domains", "text": "Flag domains backed by an HSM connection", "type": "flag", "codes": ["domains_uses_hsm"]},
+
+        # Network
+        {"category": "Network", "text": "Flag disabled service interfaces", "type": "flag", "codes": ["net_interface_disabled"]},
+        {"category": "Network", "text": "Flag service interfaces using an insecure/anonymous auth mode", "type": "flag", "codes": ["net_interface_insecure_mode"]},
+        {"category": "Network", "text": "Flag service interfaces with a weak minimum TLS version", "type": "flag", "codes": ["net_interface_weak_tls"]},
+        {"category": "Network", "text": "Flag enabled service interfaces with no Post-Quantum Cryptography enabled", "type": "flag", "codes": ["net_interface_no_pqc"]},
+        {"category": "Network", "text": "Verify at least one active external log forwarder is configured", "type": "verify", "codes": ["net_no_active_log_forwarders"]},
+
+        # Keys
+        {"category": "Keys", "text": "Collapse key versions and flag any key whose highest version is not Active", "type": "flag", "codes": ["keys_non_active"]},
+        {"category": "Keys", "text": "Flag weak key configurations (RSA < 2048, AES < 128)", "type": "flag", "codes": ["keys_weak_algorithm"]},
+        {"category": "Keys", "text": "Flag deleted domains with orphaned keys left behind", "type": "flag", "codes": ["keys_orphaned"]},
+
+        # Certificate Authorities
+        {"category": "Certificate Authorities", "text": "Flag expired trusted CA certificates", "type": "flag", "codes": ["ca_trusted_expired"]},
+        {"category": "Certificate Authorities", "text": "Flag trusted CA certificates expiring within 30 days", "type": "flag", "codes": ["ca_trusted_expiring"]},
+        {"category": "Certificate Authorities", "text": "Flag expired local/external CAs", "type": "flag", "codes": ["ca_local_external_expired"]},
+        {"category": "Certificate Authorities", "text": "Flag local/external CAs expiring within 30 days", "type": "flag", "codes": ["ca_local_external_expiring"]},
+
+        # Transparent Encryption (CTE)
+        {"category": "Transparent Encryption (CTE)", "text": "Flag CTE clients whose client_health_status is not Healthy", "type": "flag", "codes": ["cte_client_unhealthy"]},
+        {"category": "Transparent Encryption (CTE)", "text": "Flag CTE GuardPoints not in ACTIVE state", "type": "flag", "codes": ["cte_guardpoint_inactive"]},
+        {"category": "Transparent Encryption (CTE)", "text": "Flag CTE policies with Learn Mode enabled", "type": "flag", "codes": ["cte_policy_learn_mode"]},
+
+        # Event Records
+        {"category": "Event Records", "text": "Review server audit records from the last 7 days and flag errors/criticals", "type": "flag", "codes": ["records_server_error", "records_server_critical"]},
+        {"category": "Event Records", "text": "Review client audit records from the last 7 days and flag errors/criticals", "type": "flag", "codes": ["records_client_error", "records_client_critical"]},
+    ]
+
+    all_issues = []
+    for cat_id in ["system", "licensing", "access", "domains", "network", "keys", "ca", "cte", "records"]:
+        if cat_id in analysis and "issues" in analysis[cat_id]:
+            all_issues.extend(analysis[cat_id]["issues"])
+
+    # Categorize and format
+    categorized_checks = {}
+    for chk in ALL_CHECKS:
+        cat = chk["category"]
+        if cat not in categorized_checks:
+            categorized_checks[cat] = []
+        
+        matching = [iss for iss in all_issues if iss.get("code") == chk["codes"][0] or iss.get("code") in chk["codes"]]
+        if matching:
+            sevs = [iss.get("severity", "INFO").upper() for iss in matching]
+            if "FAIL" in sevs:
+                status_icon = "❌"
+            elif "WARNING" in sevs:
+                status_icon = "⚠️"
+            else:
+                status_icon = "ℹ️"
+        else:
+            if chk["type"] == "verify":
+                status_icon = "✅"
+            else:
+                status_icon = "⬜"
+        
+        chk["status_icon"] = status_icon
+        categorized_checks[cat].append(chk)
+
+    all_checks_html_parts = []
+    for cat_name, chks in categorized_checks.items():
+        chks_html = []
+        for chk in chks:
+            chks_html.append(f'''
+            <div style="display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">
+                <span style="font-size: 1rem; min-width: 20px; text-align: center;">{chk['status_icon']}</span>
+                <span>{chk['text']}</span>
+            </div>
+            ''')
+        all_checks_html_parts.append(f'''
+        <div class="all-checks-category" style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border); border-radius: 8px;">
+            <h4 style="margin: 0 0 0.75rem 0; color: var(--text-primary); border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">{cat_name}</h4>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem;">
+                {"".join(chks_html)}
+            </div>
+        </div>
+        ''')
+    all_checks_html = "".join(all_checks_html_parts)
     
     sys_info = data.get("system_info", {})
     ntp_status = data.get("ntp_status", {})
@@ -1786,6 +1917,7 @@ def generate_html_report(data: Dict[str, Any], analysis: Dict[str, Any]) -> None
         "data": data,
         "nav_tabs": nav_tabs,
         "findings_html": findings_html,
+        "all_checks_html": all_checks_html,
         "sys_info": sys_info,
         "ntp_status": ntp_status,
         "backups": backups,

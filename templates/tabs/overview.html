@@ -4,4 +4,22 @@
     <div class="issues-list">
         {{ findings_html }}
     </div>
+
+    <div class="collapsible-severity-group" style="margin-top: 1.5rem;">
+        <button class="severity-header neutral collapsed" onclick="toggleSeverityGroup('all-checks-group')">
+            <i class="fa-solid fa-chevron-down toggle-icon"></i>
+            <i class="fa-solid fa-list-check" style="margin-left: 0.5rem; margin-right: 0.25rem;"></i>
+            <span>All Checks</span>
+        </button>
+        <div id="all-checks-group" class="severity-content">
+            <div class="checks-legend" style="display: flex; flex-wrap: wrap; gap: 1rem; padding: 0.5rem 1rem; margin-bottom: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--card-border); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span>✅</span> <span>Pass</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span>⚠️</span> <span>Warning</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span>❌</span> <span>Fail</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span>ℹ️</span> <span>Info</span></div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;"><span>⬜</span> <span>No Findings</span></div>
+            </div>
+            {{ all_checks_html }}
+        </div>
+    </div>
 </div>

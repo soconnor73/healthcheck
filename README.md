@@ -1,6 +1,6 @@
 # CipherTrust Healthcheck Reporter
 
-> Version 3.0.1
+> Version 3.0.2
 
 An automated diagnostics tool that logs into Thales CipherTrust Manager via `ksctl`, gathers configuration data, analyzes it, and generates a structured, interactive dashboard report.
 
